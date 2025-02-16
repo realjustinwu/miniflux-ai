@@ -54,6 +54,7 @@ def process_entry(miniflux_client, entry):
                     logger.error(
                         f"Error generating completion for agent {agent[0]}: {e}"
                     )
+                    logger.debug(f"Response from llm_client: {completion}")
                     continue
 
                 logger.info(
