@@ -57,7 +57,7 @@ def process_entry(miniflux_client, entry):
                     continue
 
                 logger.info(
-                    f"agents:{agent[0]} feed_title:{entry['title']} result:{response_content}"
+                    f"agents:{agent[0]} feed_title:{entry['title']} result:{response_content[:50] + '...' if len(response_content) > 50 else response_content}"
                 )
 
                 # save for ai_summary
