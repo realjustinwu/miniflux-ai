@@ -33,23 +33,27 @@ def miniflux_ai():
     webhook_secret = config.miniflux_webhook_secret
 
     if request.method == 'POST':
-        payload = request.get_data()
-        signature = request.headers.get('X-Miniflux-Signature')
-        hmac_signature = hmac.new(webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(hmac_signature, signature):
-            abort(403)  # 返回403 Forbidden
-        entries = request.json
-        logger.info('Get unread entries via webhook: ' + str(len(entries['entries'])))
-        for i in entries['entries']:
-            i['feed'] = entries['feed']
-            with concurrent.futures.ThreadPoolExecutor(max_workers=config.llm_max_workers) as executor:
-                futures = [executor.submit(process_entry, miniflux_client, i)]
-                for future in concurrent.futures.as_completed(futures):
-                    try:
-                        data = future.result()
-                    except Exception as e:
-                        logger.error(traceback.format_exc())
-                        logger.error('generated an exception: %s' % e)
-                        return 500
-
-        return jsonify({'status': 'ok'})
+        try:
+            payload = request.get_data()
+            signature = request.headers.get('X-Miniflux-Signature')
+            hmac_signature = hmac.new(webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(hmac_signature, signature):
+                abort(403)  # 返回403 Forbidden
+            entries = request.json
+            logger.info('Get unread entries via webhook: ' + str(len(entries['entries'])))
+            for i in entries['entries']:
+                i['feed'] = entries['feed']
+                with concurrent.futures.ThreadPoolExecutor(max_workers=config.llm_max_workers) as executor:
+                    futures = [executor.submit(process_entry, miniflux_client, i)]
+                    for future in concurrent.futures.as_completed(futures):
+                        try:
+                            data = future.result()
+                        except Exception as e:
+                            logger.error(traceback.format_exc())
+                            logger.error('generated an exception: %s' % e)
+                            return jsonify({'status': 'error', 'message': str(e)}), 500
+            return jsonify({'status': 'ok'})
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            logger.error('Error processing request: %s' % e)
+            return jsonify({'status': 'error', 'message': str(e)}), 500

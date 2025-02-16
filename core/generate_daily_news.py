@@ -17,6 +17,7 @@ def generate_daily_news(miniflux_client):
             with open("entries.json", "r") as f:
                 entries = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
+            logger.error("entries.json file not found or invalid JSON format")
             return []
 
         contents = "\n".join([i["content"] for i in entries])
