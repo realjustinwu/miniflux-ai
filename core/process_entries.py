@@ -16,8 +16,12 @@ file_lock = threading.Lock()
 @sleep_and_retry
 @limits(calls=config.llm_RPM, period=60)
 def process_entry(miniflux_client, entry):
-    #Todo change to queue
+    # Todo change to queue
     llm_result = ''
+
+    if '◆' in entry['title']:
+        print(entry['title'] + '  ignored')
+        return
 
     for agent in config.agents.items():
         # filter, if AI is not generating, and in allow_list, or not in deny_list
@@ -35,7 +39,7 @@ def process_entry(miniflux_client, entry):
 
             completion = llm_client.chat.completions.create(
                 model=config.llm_model,
-                messages= messages,
+                messages=messages,
                 timeout=config.llm_timeout
             )
 
@@ -44,7 +48,10 @@ def process_entry(miniflux_client, entry):
 
             # save for ai_summary
             if agent[0] == 'summary':
-                entry_list = {'datetime': entry['created_at'], 'category': entry['feed']['category']['title'], 'title': entry['title'], 'content': response_content}
+                entry_list = {'datetime': entry['created_at'],
+                              'category': entry['feed']['category']['title'],
+                              'title': entry['title'],
+                              'content': response_content}
                 with file_lock:
                     try:
                         with open('entries.json', 'r') as file:
@@ -64,4 +71,18 @@ def process_entry(miniflux_client, entry):
                 llm_result = llm_result + f"{agent[1]['title']}{markdown.markdown(response_content)}<hr><br />"
 
     if len(llm_result) > 0:
-        dict_result = miniflux_client.update_entry(entry['id'], content= llm_result + entry['content'])
+        title_messages = [{
+            "role": "user",
+            "content": f"Translate the following title of an article into Chinese:\ntitle: {entry['title']}\n"
+        }]
+        title_completion = llm_client.chat.completions.create(
+            model=config.llm_model,
+            messages=title_messages,
+            timeout=config.llm_timeout
+        )
+        title_content = title_completion.choices[0].message.content
+        dict_result = miniflux_client.update_entry(
+            entry_id=entry['id'],
+            title=title_content + "◆" + entry['title'],
+            content=llm_result + entry['content']
+        )
