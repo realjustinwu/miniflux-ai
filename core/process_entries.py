@@ -22,6 +22,7 @@ def process_entry(miniflux_client, entry):
     if '◆' in entry['title']:
         print(entry['title'] + '  ignored')
         return
+    logger.info(f"Start processing feed_title:{entry['title']}")
 
     for agent in config.agents.items():
         # filter, if AI is not generating, and in allow_list, or not in deny_list
@@ -44,7 +45,7 @@ def process_entry(miniflux_client, entry):
             )
 
             response_content = completion.choices[0].message.content
-            logger.info(f"agents:{agent[0]} feed_title:{entry['title']} result:{response_content}")
+            logger.info(f"agents:{agent[0]} feed_title:{entry['title']}")
 
             # save for ai_summary
             if agent[0] == 'summary':
@@ -83,7 +84,7 @@ def process_entry(miniflux_client, entry):
         title_content = title_completion.choices[0].message.content
         if title_content.strip() == entry['title'].strip():
             title_content = ''
-
+        logger.info(f"Finished processing, update content feed_title:{entry['title']}")
         dict_result = miniflux_client.update_entry(
             entry_id=entry['id'],
             title=title_content + "◆" + entry['title'],
