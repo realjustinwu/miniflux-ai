@@ -73,7 +73,7 @@ def process_entry(miniflux_client, entry):
     if len(llm_result) > 0:
         title_messages = [{
             "role": "user",
-            "content": f"Translate the following title of an article into Chinese, and keep the original title style, don't add any other text:\n---\n{entry['title']}\n---\n"
+            "content": f"Translate the following title of an article into Chinese, if the title is already in Chinese, return the original title, and keep the original title style, don't add any other text:\n---\n{entry['title']}\n---\n"
         }]
         title_completion = llm_client.chat.completions.create(
             model=config.llm_model,
@@ -81,6 +81,9 @@ def process_entry(miniflux_client, entry):
             timeout=config.llm_timeout
         )
         title_content = title_completion.choices[0].message.content
+        if title_content.strip() == entry['title'].strip():
+            title_content = ''
+
         dict_result = miniflux_client.update_entry(
             entry_id=entry['id'],
             title=title_content + "◆" + entry['title'],
